@@ -44,3 +44,25 @@ TRUNCATE
 SETTINGS output_format_arrow_compression_method = 'none'
 FORMAT Arrow
 ;
+
+-- per leg version
+select
+toUInt32(intDiv(h3_t, 4294967296)) AS index_upper,
+toUInt32(h3_t % 4294967296) AS index_lower,
+avg(stopped_perc) AS value
+from (
+    SELECT
+    h3ToParent(h3,6) h3_t,
+    dateDiff('minutes', arrival_time, departure_time) AS dwell,
+    dateDiff('minutes', departure_time, next_arrival) AS journey_time,
+    dwell/journey_time as stopped_perc
+    FROM transitous_everything_20261018_real_edgelist_fahrtle2
+    WHERE (route_type = 1 OR route_type BETWEEN 100 AND 199)
+    and journey_time > 0 AND dwell > 0
+)
+group by all
+INTO OUTFILE '/home/olie/projects/H3-MON/www/data/dwell_per_station.arrow'
+TRUNCATE
+SETTINGS output_format_arrow_compression_method = 'none'
+FORMAT Arrow
+;
